@@ -1,3 +1,4 @@
+
 import pygame
 import random
 import math
@@ -41,9 +42,13 @@ pygame.display.set_caption("霓虹方块 - 俄罗斯方块")
 clock = pygame.time.Clock()
 
 # 字体
-title_font = pygame.font.SysFont("Arial", 48, bold=True)
-font = pygame.font.SysFont("Arial", 28)
-small_font = pygame.font.SysFont("Arial", 20)
+# title_font = pygame.font.SysFont("Arial", 48, bold=True)
+# font = pygame.font.SysFont("Arial", 28)
+# small_font = pygame.font.SysFont("Arial", 20)
+
+title_font = pygame.font.SysFont('simhei', 48, bold=True)
+font = pygame.font.SysFont('simhei', 36)
+small_font = pygame.font.SysFont('simhei', 24)
 
 # 方块形状定义
 SHAPES = [

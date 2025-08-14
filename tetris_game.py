@@ -26,11 +26,16 @@ GOLD = (255, 215, 0)
 # 游戏设置
 BLOCK_SIZE = 32
 GRID_WIDTH = 10
-GRID_HEIGHT = 20
+GRID_HEIGHT = 25 # 24 visible + 1 buffer
 SCREEN_WIDTH = BLOCK_SIZE * (GRID_WIDTH + 10)
 SCREEN_HEIGHT = BLOCK_SIZE * GRID_HEIGHT
 GRID_OFFSET_X = 20
 GRID_OFFSET_Y = 20
+
+# Add new constants for fluffy effect
+HIGHLIGHT_ALPHA = 180
+SHADOW_ALPHA = 100
+FLUFFY_RADIUS = 6
 
 # 方块形状定义
 SHAPES = [
@@ -50,16 +55,23 @@ class Tetris:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("俄罗斯方块 - Tetris")
         self.clock = pygame.time.Clock()
+        self.starfield = self.create_starfield()
         
         # 尝试加载更好的字体
-        try:
-            self.title_font = pygame.font.Font("arial.ttf", 48)
-            self.font = pygame.font.Font("arial.ttf", 24)
-            self.small_font = pygame.font.Font("arial.ttf", 18)
-        except:
-            self.title_font = pygame.font.Font(None, 48)
-            self.font = pygame.font.Font(None, 24)
-            self.small_font = pygame.font.Font(None, 18)
+        # try:
+        #     self.title_font = pygame.font.Font("simhei", 48)
+        #     self.font = pygame.font.Font("simhei", 24)
+        #     self.small_font = pygame.font.Font("simhei", 18)
+        # except:
+        #     self.title_font = pygame.font.Font(None, 48)
+        #     self.font = pygame.font.Font(None, 24)
+        #     self.small_font = pygame.font.Font(None, 18)
+
+        self.title_font = pygame.font.SysFont('simhei', 36, bold=True)
+        self.font = pygame.font.SysFont('simhei', 24)
+        self.small_font = pygame.font.SysFont('simhei', 12)
+
+            
         
         self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
         self.current_piece = self.new_piece()
@@ -92,7 +104,7 @@ class Tetris:
                     new_y = piece['y'] + y + y_offset
                     
                     if (new_x < 0 or new_x >= GRID_WIDTH or 
-                        new_y >= GRID_HEIGHT or 
+                        new_y >= GRID_HEIGHT -1 or 
                         (new_y >= 0 and self.grid[new_y][new_x])):
                         return False
         return True
@@ -151,7 +163,7 @@ class Tetris:
     def clear_lines(self):
         """清除完整的行"""
         lines_to_clear = []
-        for y in range(GRID_HEIGHT):
+        for y in range(GRID_HEIGHT -1 ):
             if all(self.grid[y]):
                 lines_to_clear.append(y)
         
@@ -172,22 +184,79 @@ class Tetris:
             self.level = self.lines_cleared // 10 + 1
             self.fall_speed = max(50, 500 - (self.level - 1) * 50)
     
-    def draw_gradient_background(self):
-        """绘制渐变背景"""
+    # def draw_gradient_background(self):
+    #     """绘制渐变背景"""
+    #     for y in range(SCREEN_HEIGHT):
+    #         color_ratio = y / SCREEN_HEIGHT
+    #         r = int(DARK_BLUE[0] + (LIGHT_BLUE[0] - DARK_BLUE[0]) * color_ratio)
+    #         g = int(DARK_BLUE[1] + (LIGHT_BLUE[1] - DARK_BLUE[1]) * color_ratio)
+    #         b = int(DARK_BLUE[2] + (LIGHT_BLUE[2] - DARK_BLUE[2]) * color_ratio)
+    #         pygame.draw.line(self.screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+    def create_starfield(self):
+        """创建星空背景"""
+        starfield = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        
+        # 绘制渐变背景 (保持不变)
         for y in range(SCREEN_HEIGHT):
             color_ratio = y / SCREEN_HEIGHT
             r = int(DARK_BLUE[0] + (LIGHT_BLUE[0] - DARK_BLUE[0]) * color_ratio)
             g = int(DARK_BLUE[1] + (LIGHT_BLUE[1] - DARK_BLUE[1]) * color_ratio)
             b = int(DARK_BLUE[2] + (LIGHT_BLUE[2] - DARK_BLUE[2]) * color_ratio)
-            pygame.draw.line(self.screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+            pygame.draw.line(starfield, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+        
+        # 添加星星
+        for _ in range(200):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, SCREEN_HEIGHT)
+            size = random.choice([1, 1, 1, 2])  # Mostly small stars
+            brightness = random.randint(150, 255)
+            pygame.draw.circle(starfield, (brightness, brightness, brightness), (x, y), size)
+        
+        # 添加星云效果
+        for _ in range(20):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, SCREEN_HEIGHT)
+            size = random.randint(20, 80)
+            nebula_color = (
+                random.randint(50, 100),
+                random.randint(50, 150),
+                random.randint(150, 255),
+                random.randint(10, 30)  # Alpha
+            )
+            nebula_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            pygame.draw.circle(nebula_surf, nebula_color, (size, size), size)
+            starfield.blit(nebula_surf, (x-size, y-size), special_flags=pygame.BLEND_ADD)
+        
+        return starfield
+
+    # Replace draw_gradient_background with:
+    def draw_gradient_background(self):
+        """绘制星空背景"""
+        self.screen.blit(self.starfield, (0, 0))
+    
+    # def draw_grid_background(self):
+    #     """绘制网格背景"""
+    #     grid_rect = pygame.Rect(GRID_OFFSET_X - 5, GRID_OFFSET_Y - 5,
+    #                            GRID_WIDTH * BLOCK_SIZE + 10, 
+    #                            GRID_HEIGHT * BLOCK_SIZE + 10)
+        
+    #     # 绘制阴影
+    #     shadow_rect = grid_rect.copy()
+    #     shadow_rect.x += 3
+    #     shadow_rect.y += 3
+    #     pygame.draw.rect(self.screen, DARK_GRAY, shadow_rect, border_radius=10)
+        
+    #     # 绘制主背景
+    #     pygame.draw.rect(self.screen, BLACK, grid_rect, border_radius=10)
+    #     pygame.draw.rect(self.screen, GRAY, grid_rect, 2, border_radius=10)
     
     def draw_grid_background(self):
-        """绘制网格背景"""
+        """绘制网格背景 - 带图案"""
         grid_rect = pygame.Rect(GRID_OFFSET_X - 5, GRID_OFFSET_Y - 5,
-                               GRID_WIDTH * BLOCK_SIZE + 10, 
-                               GRID_HEIGHT * BLOCK_SIZE + 10)
+                            GRID_WIDTH * BLOCK_SIZE + 10, 
+                            GRID_HEIGHT * BLOCK_SIZE + 10)
         
-        # 绘制阴影
+        # 绘制面板阴影
         shadow_rect = grid_rect.copy()
         shadow_rect.x += 3
         shadow_rect.y += 3
@@ -195,68 +264,235 @@ class Tetris:
         
         # 绘制主背景
         pygame.draw.rect(self.screen, BLACK, grid_rect, border_radius=10)
-        pygame.draw.rect(self.screen, GRAY, grid_rect, 2, border_radius=10)
+        
+        # 添加几何图案
+        pattern_surf = pygame.Surface(grid_rect.size, pygame.SRCALPHA)
+        for _ in range(50):
+            x = random.randint(0, grid_rect.width)
+            y = random.randint(0, grid_rect.height)
+            size = random.randint(2, 8)
+            shape = random.choice(["circle", "square"])
+            alpha = random.randint(10, 30)
+            color = (LIGHT_BLUE[0], LIGHT_BLUE[1], LIGHT_BLUE[2], alpha)
+            
+            if shape == "circle":
+                pygame.draw.circle(pattern_surf, color, (x, y), size)
+            else:
+                rect = pygame.Rect(x-size, y-size, size*2, size*2)
+                pygame.draw.rect(pattern_surf, color, rect, border_radius=size//2)
+        
+        self.screen.blit(pattern_surf, grid_rect.topleft)
+        
+        # 绘制边框
+        pygame.draw.rect(self.screen, LIGHT_BLUE,grid_rect, 2, border_radius=10)
+    # def draw_grid(self):
+    #     """绘制游戏网格"""
+    #     for y in range(GRID_HEIGHT):
+    #         for x in range(GRID_WIDTH):
+    #             rect = pygame.Rect(x * BLOCK_SIZE + GRID_OFFSET_X, 
+    #                              y * BLOCK_SIZE + GRID_OFFSET_Y,
+    #                              BLOCK_SIZE, BLOCK_SIZE)
+                
+    #             color = self.grid[y][x]
+    #             if color:
+    #                 # 绘制方块阴影
+    #                 shadow_rect = rect.copy()
+    #                 shadow_rect.x += 2
+    #                 shadow_rect.y += 2
+    #                 pygame.draw.rect(self.screen, DARK_GRAY, shadow_rect)
+                    
+    #                 # 绘制主方块
+    #                 pygame.draw.rect(self.screen, color, rect)
+                    
+    #                 # 绘制高光效果
+    #                 highlight_rect = rect.copy()
+    #                 highlight_rect.width = rect.width // 3
+    #                 highlight_rect.height = rect.height // 3
+    #                 highlight_color = tuple(min(255, c + 50) for c in color)
+    #                 pygame.draw.rect(self.screen, highlight_color, highlight_rect)
+                    
+    #                 # 绘制边框
+    #                 pygame.draw.rect(self.screen, WHITE, rect, 1)
+    #             else:
+    #                 # 绘制空网格线
+    #                 pygame.draw.rect(self.screen, DARK_GRAY, rect, 1)
+
+    # def draw_grid(self):
+    #     """绘制游戏网格"""
+    #     # 绘制最后一行作为蓝色底板
+    #     last_row_rect = pygame.Rect(
+    #         GRID_OFFSET_X,
+    #         (GRID_HEIGHT - 1) * BLOCK_SIZE + GRID_OFFSET_Y,
+    #         GRID_WIDTH * BLOCK_SIZE,
+    #         BLOCK_SIZE
+    #     )
+    #     pygame.draw.rect(self.screen, LIGHT_BLUE, last_row_rect)
+    #     pygame.draw.rect(self.screen, DARK_GRAY, last_row_rect, 1)  # 网格边框
+        
+    #     # 绘制其他网格行
+    #     for y in range(GRID_HEIGHT - 1):  # 注意: 只绘制到倒数第二行
+    #         for x in range(GRID_WIDTH):
+    #             rect = pygame.Rect(
+    #                 x * BLOCK_SIZE + GRID_OFFSET_X,
+    #                 y * BLOCK_SIZE + GRID_OFFSET_Y,
+    #                 BLOCK_SIZE, BLOCK_SIZE
+    #             )
+                
+    #             color = self.grid[y][x]
+    #             if color:
+    #                 # 绘制方块阴影
+    #                 shadow_rect = rect.copy()
+    #                 shadow_rect.x += 2
+    #                 shadow_rect.y += 2
+    #                 pygame.draw.rect(self.screen, DARK_GRAY, shadow_rect)
+                    
+    #                 # 绘制主方块
+    #                 pygame.draw.rect(self.screen, color, rect)
+                    
+    #                 # 绘制高光效果
+    #                 highlight_rect = rect.copy()
+    #                 highlight_rect.width = rect.width // 3
+    #                 highlight_rect.height = rect.height // 3
+    #                 highlight_color = tuple(min(255, c + 50) for c in color)
+    #                 pygame.draw.rect(self.screen, highlight_color, highlight_rect)
+                    
+    #                 # 绘制边框
+    #                 pygame.draw.rect(self.screen, WHITE, rect, 1)
+    #             else:
+    #                 # 绘制空网格线
+    #                 pygame.draw.rect(self.screen, DARK_GRAY, rect, 1)
     
+    # def draw_piece(self, piece, x_offset=0, y_offset=0):
+    #     """绘制方块"""
+    #     for y, row in enumerate(piece['shape']):
+    #         for x, cell in enumerate(row):
+    #             if cell:
+    #                 rect = pygame.Rect((piece['x'] + x + x_offset) * BLOCK_SIZE + GRID_OFFSET_X,
+    #                                  (piece['y'] + y + y_offset) * BLOCK_SIZE + GRID_OFFSET_Y,
+    #                                  BLOCK_SIZE, BLOCK_SIZE)
+                    
+    #                 # 绘制阴影
+    #                 shadow_rect = rect.copy()
+    #                 shadow_rect.x += 2
+    #                 shadow_rect.y += 2
+    #                 pygame.draw.rect(self.screen, DARK_GRAY, shadow_rect)
+                    
+    #                 # 绘制主方块
+    #                 pygame.draw.rect(self.screen, piece['color'], rect)
+                    
+    #                 # 绘制高光效果
+    #                 highlight_rect = rect.copy()
+    #                 highlight_rect.width = rect.width // 3
+    #                 highlight_rect.height = rect.height // 3
+    #                 highlight_color = tuple(min(255, c + 50) for c in piece['color'])
+    #                 pygame.draw.rect(self.screen, highlight_color, highlight_rect)
+                    
+    #                 # 绘制边框
+    #                 pygame.draw.rect(self.screen, WHITE, rect, 1)
+    # Replace the draw_grid and draw_piece methods with these fluffy versions
     def draw_grid(self):
-        """绘制游戏网格"""
-        for y in range(GRID_HEIGHT):
+        """绘制游戏网格 - 毛绒效果"""
+        # 绘制最后一行作为蓝色底板 (保持不变)
+        last_row_rect = pygame.Rect(
+            GRID_OFFSET_X,
+            (GRID_HEIGHT - 1) * BLOCK_SIZE + GRID_OFFSET_Y,
+            GRID_WIDTH * BLOCK_SIZE,
+            BLOCK_SIZE
+        )
+        pygame.draw.rect(self.screen, LIGHT_BLUE, last_row_rect)
+        pygame.draw.rect(self.screen, DARK_GRAY, last_row_rect, 1)
+        
+        # 绘制其他网格行 - 毛绒方块
+        for y in range(GRID_HEIGHT - 1):
             for x in range(GRID_WIDTH):
-                rect = pygame.Rect(x * BLOCK_SIZE + GRID_OFFSET_X, 
-                                 y * BLOCK_SIZE + GRID_OFFSET_Y,
-                                 BLOCK_SIZE, BLOCK_SIZE)
+                rect = pygame.Rect(
+                    x * BLOCK_SIZE + GRID_OFFSET_X,
+                    y * BLOCK_SIZE + GRID_OFFSET_Y,
+                    BLOCK_SIZE, BLOCK_SIZE
+                )
                 
                 color = self.grid[y][x]
                 if color:
-                    # 绘制方块阴影
-                    shadow_rect = rect.copy()
-                    shadow_rect.x += 2
-                    shadow_rect.y += 2
-                    pygame.draw.rect(self.screen, DARK_GRAY, shadow_rect)
+                    # 创建毛绒效果表面
+                    fluffy_surf = pygame.Surface((BLOCK_SIZE, BLOCK_SIZE), pygame.SRCALPHA)
                     
-                    # 绘制主方块
-                    pygame.draw.rect(self.screen, color, rect)
+                    # 绘制主方块 (圆角)
+                    pygame.draw.rect(fluffy_surf, color, (0, 0, BLOCK_SIZE, BLOCK_SIZE), 
+                                    border_radius=FLUFFY_RADIUS)
                     
-                    # 绘制高光效果
-                    highlight_rect = rect.copy()
-                    highlight_rect.width = rect.width // 3
-                    highlight_rect.height = rect.height // 3
-                    highlight_color = tuple(min(255, c + 50) for c in color)
-                    pygame.draw.rect(self.screen, highlight_color, highlight_rect)
+                    # 绘制高光 (顶部)
+                    highlight = pygame.Surface((BLOCK_SIZE, BLOCK_SIZE//3), pygame.SRCALPHA)
+                    highlight.fill((255, 255, 255, HIGHLIGHT_ALPHA))
+                    fluffy_surf.blit(highlight, (0, 0))
+                    
+                    # 绘制阴影 (底部)
+                    shadow = pygame.Surface((BLOCK_SIZE, BLOCK_SIZE//4), pygame.SRCALPHA)
+                    shadow.fill((0, 0, 0, SHADOW_ALPHA))
+                    fluffy_surf.blit(shadow, (0, BLOCK_SIZE - BLOCK_SIZE//4))
+                    
+                    # 绘制纹理 (小点)
+                    for _ in range(10):
+                        dot_pos = (
+                            random.randint(2, BLOCK_SIZE-2),
+                            random.randint(2, BLOCK_SIZE-2)
+                        )
+                        dot_size = random.randint(1, 2)
+                        dot_color = tuple(min(255, c + 40) for c in color)
+                        pygame.draw.circle(fluffy_surf, dot_color, dot_pos, dot_size)
+                    
+                    # 绘制到主屏幕
+                    self.screen.blit(fluffy_surf, rect.topleft)
                     
                     # 绘制边框
-                    pygame.draw.rect(self.screen, WHITE, rect, 1)
+                    pygame.draw.rect(self.screen, WHITE, rect, 1, border_radius=FLUFFY_RADIUS)
                 else:
-                    # 绘制空网格线
+                    # 绘制空网格线 (保持不变)
                     pygame.draw.rect(self.screen, DARK_GRAY, rect, 1)
-    
+
     def draw_piece(self, piece, x_offset=0, y_offset=0):
-        """绘制方块"""
+        """绘制方块 - 毛绒效果"""
         for y, row in enumerate(piece['shape']):
             for x, cell in enumerate(row):
                 if cell:
-                    rect = pygame.Rect((piece['x'] + x + x_offset) * BLOCK_SIZE + GRID_OFFSET_X,
-                                     (piece['y'] + y + y_offset) * BLOCK_SIZE + GRID_OFFSET_Y,
-                                     BLOCK_SIZE, BLOCK_SIZE)
+                    rect = pygame.Rect(
+                        (piece['x'] + x + x_offset) * BLOCK_SIZE + GRID_OFFSET_X,
+                        (piece['y'] + y + y_offset) * BLOCK_SIZE + GRID_OFFSET_Y,
+                        BLOCK_SIZE, BLOCK_SIZE
+                    )
                     
-                    # 绘制阴影
-                    shadow_rect = rect.copy()
-                    shadow_rect.x += 2
-                    shadow_rect.y += 2
-                    pygame.draw.rect(self.screen, DARK_GRAY, shadow_rect)
+                    # 创建毛绒效果表面
+                    fluffy_surf = pygame.Surface((BLOCK_SIZE, BLOCK_SIZE), pygame.SRCALPHA)
                     
-                    # 绘制主方块
-                    pygame.draw.rect(self.screen, piece['color'], rect)
+                    # 绘制主方块 (圆角)
+                    pygame.draw.rect(fluffy_surf, piece['color'], 
+                                    (0, 0, BLOCK_SIZE, BLOCK_SIZE), 
+                                    border_radius=FLUFFY_RADIUS)
                     
-                    # 绘制高光效果
-                    highlight_rect = rect.copy()
-                    highlight_rect.width = rect.width // 3
-                    highlight_rect.height = rect.height // 3
-                    highlight_color = tuple(min(255, c + 50) for c in piece['color'])
-                    pygame.draw.rect(self.screen, highlight_color, highlight_rect)
+                    # 绘制高光 (顶部)
+                    highlight = pygame.Surface((BLOCK_SIZE, BLOCK_SIZE//3), pygame.SRCALPHA)
+                    highlight.fill((255, 255, 255, HIGHLIGHT_ALPHA))
+                    fluffy_surf.blit(highlight, (0, 0))
+                    
+                    # 绘制阴影 (底部)
+                    shadow = pygame.Surface((BLOCK_SIZE, BLOCK_SIZE//4), pygame.SRCALPHA)
+                    shadow.fill((0, 0, 0, SHADOW_ALPHA))
+                    fluffy_surf.blit(shadow, (0, BLOCK_SIZE - BLOCK_SIZE//4))
+                    
+                    # 绘制纹理 (小点)
+                    for _ in range(10):
+                        dot_pos = (
+                            random.randint(2, BLOCK_SIZE-2),
+                            random.randint(2, BLOCK_SIZE-2)
+                        )
+                        dot_size = random.randint(1, 2)
+                        dot_color = tuple(min(255, c + 40) for c in piece['color'])
+                        pygame.draw.circle(fluffy_surf, dot_color, dot_pos, dot_size)
+                    
+                    # 绘制到主屏幕
+                    self.screen.blit(fluffy_surf, rect.topleft)
                     
                     # 绘制边框
-                    pygame.draw.rect(self.screen, WHITE, rect, 1)
-    
+                    pygame.draw.rect(self.screen, WHITE, rect, 1, border_radius=FLUFFY_RADIUS)
     def draw_ui_panel(self):
         """绘制UI面板"""
         panel_rect = pygame.Rect(GRID_WIDTH * BLOCK_SIZE + GRID_OFFSET_X + 20, 
@@ -323,8 +559,20 @@ class Tetris:
             for x, cell in enumerate(row):
                 if cell:
                     rect = pygame.Rect(preview_x + x * 20, preview_y + y * 20, 18, 18)
-                    pygame.draw.rect(self.screen, self.next_piece['color'], rect)
-                    pygame.draw.rect(self.screen, WHITE, rect, 1)
+                    
+                    # 创建预览毛绒方块
+                    preview_surf = pygame.Surface((18, 18), pygame.SRCALPHA)
+                    pygame.draw.rect(preview_surf, self.next_piece['color'], 
+                                    (0, 0, 18, 18), border_radius=3)
+                    
+                    # 添加高光
+                    highlight = pygame.Surface((18, 6), pygame.SRCALPHA)
+                    highlight.fill((255, 255, 255, 150))
+                    preview_surf.blit(highlight, (0, 0))
+                    
+                    # 绘制到屏幕
+                    self.screen.blit(preview_surf, rect.topleft)
+                    pygame.draw.rect(self.screen, WHITE, rect, 1, border_radius=3)
         
         ui_y += 120
         
@@ -334,7 +582,8 @@ class Tetris:
             "← → : 移动",
             "↓ : 快速下降", 
             "↑ : 旋转",
-            "空格 : 暂停",
+            "空格 : 一键到底",  # 修改
+            "回车 : 暂停",     # 新增
             "R : 重新开始"
         ]
         
@@ -411,8 +660,17 @@ class Tetris:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
                         self.reset_game()
-                    elif event.key == pygame.K_SPACE:
+                    elif event.key == pygame.K_RETURN:  # 回车暂停
                         paused = not paused
+                    elif event.key == pygame.K_SPACE:
+                        while self.valid_position(self.current_piece, y_offset=1):
+                            self.current_piece['y'] += 1
+                        self.place_piece()
+                        self.clear_lines()
+                        self.current_piece = self.next_piece
+                        self.next_piece = self.new_piece()
+                        if not self.valid_position(self.current_piece):
+                            self.game_over = True
                     elif not self.game_over and not paused:
                         if event.key == pygame.K_LEFT:
                             if self.valid_position(self.current_piece, x_offset=-1):

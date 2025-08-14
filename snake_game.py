@@ -29,8 +29,11 @@ pygame.display.set_caption("炫彩贪食蛇")
 clock = pygame.time.Clock()
 
 # 字体
-font = pygame.font.SysFont(None, 36)
-small_font = pygame.font.SysFont(None, 24)
+# font = pygame.font.SysFont(None, 36)
+# small_font = pygame.font.SysFont(None, 24)
+
+font = pygame.font.SysFont('simhei', 36)
+small_font = pygame.font.SysFont('simhei', 24)
 
 class Snake:
     def __init__(self):
